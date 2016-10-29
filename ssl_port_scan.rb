@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 #
-# ssl_port_scan
+# ssl_scan
 #
 #   This script looks at all tcp ports > 80 and extracts the cert details in case the ports are taking SSL traffic
 #
@@ -10,32 +10,33 @@
 #     Cert Expiry Date
 #     Subject Alternative Names
 #
-#   In addition to the above, the name and PID of the process behind the port are also included the output.
+#   In addition to the above, the name and PID of the processes behind the port are also included the output.
 #
 
 require 'date'
 require 'time'
 
+prefix = ARGV[0].nil? ? "" : ARGV[0] + "|"
 ss_output = %x(ss -tlnp)
 count = 0
 if $?.success?
-  ss_output.each do |line|
+  ss_output.each_line do |line|
     next if line.match(/^LISTEN/).nil?
     fields = line.split(' ')
     #
     # sample output: ["LISTEN", "0", "5", "*:53", "*:*", "users:((\"dnsmasq\",75298,5))"]
     #
     port = fields[3].split(':')[-1].to_i
-    process = fields[5].split('"')[1].split('\\')[0]
-    pid     = fields[5].split(',')[1]
+    process = fields[5]
     next if port <= 80
     cert_info = %x(echo | timeout 5 openssl s_client -connect localhost:#{port} 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -text 2>/dev/null)
     if $?.success?
       expect_san = false
       issuer = expiry_date = san = nil
-      cert_info.each do |cert_line|
+      cert_info.each_line do |cert_line|
+        cert_line.chomp!
         if cert_line.match(/^\s+Issuer:/)
-          issuer = cert_line.split(', O=')[1].split(', OU=')[0]
+          issuer = cert_line.split(' Issuer:')[1].strip
         elsif cert_line.match(/^\s+Not After\s*:\s*/)
           #
           # Get expiry time in PDT
@@ -50,15 +51,15 @@ if $?.success?
         end
       end
 
-      puts "port=#{port}|process=#{process}|issuer=#{issuer}|expiry=#{expiry_date}|san=#{san}|"
+      issuer ||= ""
+      puts "#{prefix}port=#{port}|process=#{process}|issuer=#{issuer.chomp}|expiry=#{expiry_date}|san=#{san}|"
       count += 1
     end
   end
   if count == 0
-    puts "No SSL"
+    puts "#{prefix}No SSL"
   end
   exit 0
 else
-  puts "ERROR: unable to get list of ports"
-  exit 5
+  puts "#{prefix}ERROR: unable to get list of ports"
 end
