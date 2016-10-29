@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 #
-# ssl_scan
+# ssl_port_scan
 #
 #   This script looks at all tcp ports > 80 and extracts the cert details in case the ports are taking SSL traffic
 #
@@ -10,8 +10,11 @@
 #     Cert Expiry Date
 #     Subject Alternative Names
 #
-#   In addition to the above, the name and PID of the processes behind the port are also included the output.
+#   In addition to the above, the name and PID of the processes behind the port are also included in the output.
 #
+# Sample output:
+#
+# port=443|process=users:(("nginx",123793,7),("nginx",104476,7))|issuer=C=US, ST=Arizona, L=Scottsdale, O=GoDaddy.com, Inc., OU=http://certs.godaddy.com/repository/, CN=Go Daddy Secure Certificate Authority - G2|expiry=2019-07-15 20:06:32|san=DNS:*.example.com, DNS:example.com|
 
 require 'date'
 require 'time'
